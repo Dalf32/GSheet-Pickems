@@ -1,10 +1,13 @@
-# PickemsStore
+# OwlPickemsStore
 #
 # AUTHOR::  Kyle Mullins
 
-class PickemsStore
+require 'redis-objects'
+
+class OwlPickemsStore
   def initialize(server_redis)
     @redis = server_redis
+    @alias_hash = Redis::HashKey.new([@redis.namespace, :user_aliases])
   end
 
   def enabled?
@@ -39,11 +42,23 @@ class PickemsStore
     @redis.del(:current_sheet_id)
   end
 
-  def user_aliases
-    {}
+  def aliased?(user_id)
+    @alias_hash.key?(user_id)
   end
 
-  def alias(user)
-    nil
+  def add_alias(user_id, user_alias)
+    @alias_hash[user_id] = user_alias
+  end
+
+  def delete_alias(user_id)
+    @alias_hash.delete(user_id)
+  end
+
+  def alias(user_id)
+    @alias_hash[user_id]
+  end
+
+  def aliased_users
+    @alias_hash.keys
   end
 end

@@ -39,4 +39,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'googleauth', '~>0.10'
   spec.add_dependency 'google-api-client', '~>0.37'
   spec.add_dependency 'json', '>=2.3'
+  spec.add_dependency 'redis-objects', '~>1.4'
 end

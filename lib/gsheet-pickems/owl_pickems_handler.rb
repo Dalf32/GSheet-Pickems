@@ -3,14 +3,14 @@
 # AUTHOR::  Kyle Mullins
 
 require 'gsheet-pickems'
-require 'gsheet-pickems/pickems_store'
+require 'gsheet-pickems/owl_pickems_store'
 
 class OwlPickemsHandler < CommandHandler
   feature :pickems, default_enabled: false,
           description: 'Allows users to enter pickems for Overwatch League.'
 
   command(:managepickems, :manage_pickems)
-    .feature(:pickems).args_range(0, 2).pm_enabled(false)
+    .feature(:pickems).args_range(0, 3).pm_enabled(false)
     .permissions(:manage_server).usage('managepickems [option] [argument]')
     .description('Used to set up pickems')
 
@@ -53,11 +53,13 @@ class OwlPickemsHandler < CommandHandler
       pickems_store.clear_current_sheet_id
       'The active sheet has been closed'
     when 'alias'
-      # Add alias for user, override if found
-      'Not Yet Implemented'
+      return 'User and alias are required' unless args.size == 3
+
+      manage_user_alias(args[1], :add, args[2])
     when 'delalias'
-      # Remove alias for user, if found
-      'Not Yet Implemented'
+      return 'User is required' if args.size == 1
+
+      manage_user_alias(args[1], :delete)
     when 'disable'
       disable_pickems
     else
@@ -96,9 +98,10 @@ class OwlPickemsHandler < CommandHandler
     'An error occurred, the sheet was not created.'
   end
 
-  def enter_picks(event, *user)
+  def enter_picks(event, *user_input)
     return 'Pickems are disabled, set a pickems spreadsheet to enable.' unless pickems_store.enabled?
     return 'There is no active sheet.' unless pickems_store.has_current_sheet?
+    return 'You do not have permission to enter picks for other users.' unless user_input.empty? or user.permission?(:manage_server)
 
     event.channel.start_typing
     current_sheet_id = pickems_store.current_sheet_id
@@ -113,7 +116,7 @@ class OwlPickemsHandler < CommandHandler
       input.split(',').map(&:strip)
     end
 
-    player_name = resolve_user(user.first)
+    player_name = resolve_user(user_input.first)
     match_picks = GSheetPickems::MatchPicks.new(player: player_name, picks: picks)
 
     event.channel.start_typing
@@ -127,7 +130,7 @@ class OwlPickemsHandler < CommandHandler
   private
 
   def pickems_store
-    @pickems_store ||= PickemsStore.new(server_redis)
+    @pickems_store ||= OwlPickemsStore.new(server_redis)
   end
 
   def pickems_service
@@ -144,10 +147,12 @@ class OwlPickemsHandler < CommandHandler
     return 'Pickems are disabled, set a pickems spreadsheet to enable.' unless pickems_store.enabled?
 
     sheet_name = pickems_service.sheet_name(pickems_store.current_sheet_id)
+    users = pickems_store.aliased_users.map { |id| @server.member(id).display_name }
+
     <<~SUMMARY
       Pickems spreadsheet: #{pickems_service.spreadsheet_name}
       Active sheet: #{sheet_name || '*no active sheet*'}
-      User aliases: #{pickems_store.user_aliases}
+      Aliased users: #{users.empty? ? '*none*' : users.join(', ')}
     SUMMARY
   end
 
@@ -192,9 +197,30 @@ class OwlPickemsHandler < CommandHandler
     'Pickems have been disabled.'
   end
 
+  def manage_user_alias(user, action, user_alias = nil)
+    found_user = find_user(user)
+
+    return found_user.error if found_user.failure?
+
+    if action == :add
+      pickems_store.add_alias(found_user.value.id, user_alias)
+      "Alias #{user_alias} added for #{found_user.value.display_name}"
+    elsif action == :delete
+      pickems_store.delete_alias(found_user.value.id)
+      "Alias deleted for #{found_user.value.display_name}"
+    end
+  end
+
+  def delete_user_alias(user)
+    found_user = find_user(user)
+
+    return found_user.error if found_user.failure?
+
+
+  end
+
   def resolve_user(user_input)
-    user_input || user.display_name
-    # TODO: user alias
+    user_input || pickems_store.alias(user.id) || user.display_name
   end
 
   def prompt(event, question, timeout: 30, **opts)
