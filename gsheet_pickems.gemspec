@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_development_dependency 'bundler', '~> 1.17'
-  spec.add_development_dependency 'rake', '~> 10.0'
+  spec.add_development_dependency 'rake', '>= 12.3.3'
   spec.add_dependency 'googleauth', '~>0.10'
   spec.add_dependency 'google-api-client', '~>0.37'
   spec.add_dependency 'json', '>=2.3'
