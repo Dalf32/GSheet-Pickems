@@ -11,7 +11,7 @@ class OwlPickemsStore
   end
 
   def enabled?
-    @redis.exists?(:spreadsheet_id)
+    @redis.exists(:spreadsheet_id)
   end
 
   def spreadsheet_id
@@ -27,7 +27,7 @@ class OwlPickemsStore
   end
 
   def has_current_sheet?
-    @redis.exists?(:current_sheet_id)
+    @redis.exists(:current_sheet_id)
   end
 
   def current_sheet_id
