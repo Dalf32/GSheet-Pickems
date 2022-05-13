@@ -147,12 +147,12 @@ class OwlPickemsHandler < CommandHandler
     return 'Pickems are disabled, set a pickems spreadsheet to enable.' unless pickems_store.enabled?
 
     sheet_name = pickems_service.sheet_name(pickems_store.current_sheet_id)
-    users = pickems_store.aliased_users.map { |id| @server.member(id).display_name }
+    users = pickems_store.aliased_users.map { |id| @server.member(id)&.display_name }
 
     <<~SUMMARY
       Pickems spreadsheet: #{pickems_service.spreadsheet_name}
       Active sheet: #{sheet_name || '*no active sheet*'}
-      Aliased users: #{users.empty? ? '*none*' : users.join(', ')}
+      Aliased users: #{users.empty? ? '*none*' : users.compact.join(', ')}
     SUMMARY
   end
 
